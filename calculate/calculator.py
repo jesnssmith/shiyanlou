@@ -3,44 +3,35 @@
 import sys
 import csv
 from multiprocessing import Process,Queue
+import getopt
+import configparser
+import datetime
 
 class Args(object):
 
     def __init__(self):
-        self.__args=sys.argv[1:]
-        self.c = self.__args[self.__args.index('-c')+1]
-        self.d = self.__args[self.__args.index('-d')+1]
-        self.o = self.__args[self.__args.index('-o')+1]
-
-#a=Args()
-#print(a.c,a.d,a.o)     
-
-
+        self.args=self.get_arg()
+        
+    def get_arg(self):
+        try:
+            opts,args=getopt.getopt(sys.argv[1:],"c:d:o:C:")
+        except getopt.GetoptError as e:
+            print(e)
+            
+        return dict(opts)
+            
 
 class Config(object):
-
-    def __init__(self,path):
-        self.path=path
-        self.config=self._read_config()
-
-    def _read_config(self):
-        config={'shebao':0}
-        try:
-            with open(self.path,'r') as f:
-                for str in f:
-                    key,value=str.split('=')[0].strip(),str.split('=')[1].strip()
-                    if float(value) > 1:
-                        config[key] = float(value)
-                    else:
-                        config['shebao'] += float(value)
-            return config
-        except:
-            print("Parameter Error")
-
-
-#b=Config(a.c).config
-#print(b)
-
+    
+    def __init__(self,file):
+        self.file=file
+        self.config=self.getconfig()
+        
+    def getconfig(self):
+        config=configparser.ConfigParser()
+        config.read(self.file)
+        return config
+        
 
 class UserData(Process):
 
@@ -63,11 +54,8 @@ class UserData(Process):
             self.q.put(userdata)
         except:
             print("Parameter Error")
-            
-#c=UserData(a.d).userdata
-#print(c)
-        
 
+     
 class IncomeTaxCalculator(Process):
     
     def __init__(self,shebao,q1,q2):
@@ -99,45 +87,66 @@ class IncomeTaxCalculator(Process):
             tax=owned*0.45-13505
         return tax
 
-
-
     def run(self):
         output=[]
-        persent=self.shebao.get('shebao')
+        persent=self.shebao.get('persent')
+        l='jishul'
+        h='jishuh'
         for i,j in self.salary:
-            if j<self.shebao['JiShuL'] and j>0:
-                shebao_fee=self.shebao['JiShuL']*persent
-            elif j>self.shebao['JiShuL'] and j<self.shebao['JiShuH']:
+            if j<self.shebao[l] and j>0:
+                shebao_fee=self.shebao[l]*persent
+            elif j>self.shebao[l] and j<self.shebao[h]:
                 shebao_fee= j*persent
-            elif j>self.shebao['JiShuH']:
-                shebao_fee=self.shebao.get('JiShuH')*persent
+            elif j>self.shebao[h]:
+                shebao_fee=self.shebao.get(h)*persent
             else:
                 print("Invalid salary")
             tax_fee=j-shebao_fee-3500
             tax=self.calculate_tax(tax_fee)
             salary_after_tax=j-shebao_fee-tax
-            output.append([i,j,format(shebao_fee,'.2f'),format(tax,'.2f'),format(salary_after_tax,'.2f')])
+            t=datetime.datetime.now()
+            t_str=datetime.datetime.strftime(t,'%Y-%m-%d %H:%M:%S')
+            output.append([i,j,format(shebao_fee,'.2f'),format(tax,'.2f'),format(salary_after_tax,'.2f'),t_str])
         self.q2.put(output)
-    
-    
-    
+
+  
 def export(output_file,q):
     result=q.get()
     with open(output_file,'w') as f:
         writer=csv.writer(f)
         writer.writerows(result)
-            
-            
-if __name__=='__main__':
+
+
+
+   
+if __name__ == '__main__':
     a=Args()
-    b=Config(a.c).config 
+    print(a.args.get('-C',False))    
+    config_file=a.args.get('-c') 
+    city=a.args.get('-C')
+    userdata_file=a.args.get('-d')
+    output_file=a.args.get('-o')
+    if city:
+        city=city.upper()
+    else:
+        city="DEFAULT"
+    config=Config(config_file).config
+    shebao={'persent':0}
+    for key in config[city]:
+        value=config[city][key]
+        if float(value) > 1:
+            shebao[key] = float(value)
+        else:
+            shebao['persent'] += float(value)
+    print(shebao)
     q1 = Queue()
-    p1=UserData(a.d,q1)
+    p1=UserData(userdata_file,q1)
     p1.start()
     p1.join() 
     q2=Queue()     
-    p2=IncomeTaxCalculator(b,q1,q2)
+    p2=IncomeTaxCalculator(shebao,q1,q2)
     p2.start()
     p2.join()
-    p3=Process(target=export,args=(a.o,q2)) 
-    p3.start()    
+    p3=Process(target=export,args=(output_file,q2)) 
+    p3.start()
+    
