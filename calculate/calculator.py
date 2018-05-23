@@ -2,26 +2,19 @@
 
 import sys
 import csv
+from multiprocessing import Process,Queue
 
 class Args(object):
 
     def __init__(self):
         self.__args=sys.argv[1:]
-    
-    def get_configfile_path(self):
-        index=self.__args.index('-c')
-        configfile=self.__args[index+1]
-        return configfile
+        self.c = self.__args[self.__args.index('-c')+1]
+        self.d = self.__args[self.__args.index('-d')+1]
+        self.o = self.__args[self.__args.index('-o')+1]
 
-    def get_salary_file(self):
-        index=self.__args.index('-d')
-        salary_file=self.__args[index+1]
-        return salary_file
+#a=Args()
+#print(a.c,a.d,a.o)     
 
-    def get_output_file(self):
-        index=self.__args.index('-o')
-        output_file=self.__args[index+1]
-        return output_file
 
 
 class Config(object):
@@ -31,45 +24,57 @@ class Config(object):
         self.config=self._read_config()
 
     def _read_config(self):
-        config={}
+        config={'shebao':0}
         try:
             with open(self.path,'r') as f:
                 for str in f:
-                    [key,value]=str.split('=')
-                    key.strip()
-                    value.strip()
-                    config[key]=float(value)
+                    key,value=str.split('=')[0].strip(),str.split('=')[1].strip()
+                    if float(value) > 1:
+                        config[key] = float(value)
+                    else:
+                        config['shebao'] += float(value)
             return config
         except:
             print("Parameter Error")
 
-class UserData(object):
 
-    def __init__(self,path):
+#b=Config(a.c).config
+#print(b)
+
+
+class UserData(Process):
+
+    def __init__(self,path,q):
+        super(UserData,self).__init__()
         self.path=path
+        self.q=q
 
-        self.userdata=self._read_users_data()
 
-    def _read_users_data(self):
+
+    def run(self):
         userdata=[]
         try:
             with open(self.path,'r') as f:
                 for str in f:
-                    [user_id,salary]=str.split(',')
+                    user_id,salary=str.split(',')
                     user_id.strip()
                     salary.strip()
                     userdata.append((user_id,float(salary)))
-            return userdata
+            self.q.put(userdata)
         except:
             print("Parameter Error")
+            
+#c=UserData(a.d).userdata
+#print(c)
         
 
-class IncomeTaxCalculator(object):
+class IncomeTaxCalculator(Process):
     
-    def __init__(self,shebao,salary,output_file):
+    def __init__(self,shebao,q1,q2):
+        super(IncomeTaxCalculator,self).__init__()
         self.shebao=shebao
-        self.salary=salary
-        self.output_file=output_file
+        self.salary=q1.get()
+        self.q2=q2
 
 
     def calculate_tax(self,owned):
@@ -86,24 +91,19 @@ class IncomeTaxCalculator(object):
             tax=owned*0.2-555 
         elif owned<=35000:
             tax=owned*0.25-1005
-
         elif owned<=55000:
             tax=owned*0.3-2705
         elif owned<=80000:
             tax=owned*0.35-5505
         else:
             tax=owned*0.45-13505
-        
         return tax
 
 
 
-    def calc_for_all_userdata(self):
+    def run(self):
         output=[]
-        persent=0
-        for i in self.shebao.keys():
-            if i!='JiShuL' and i!='JiShuH':
-                persent+=self.shebao[i]
+        persent=self.shebao.get('shebao')
         for i,j in self.salary:
             if j<self.shebao['JiShuL'] and j>0:
                 shebao_fee=self.shebao['JiShuL']*persent
@@ -116,33 +116,28 @@ class IncomeTaxCalculator(object):
             tax_fee=j-shebao_fee-3500
             tax=self.calculate_tax(tax_fee)
             salary_after_tax=j-shebao_fee-tax
-            output.append((i,j,shebao_fee,tax,salary_after_tax))
-        return output
+            output.append([i,j,format(shebao_fee,'.2f'),format(tax,'.2f'),format(salary_after_tax,'.2f')])
+        self.q2.put(output)
     
-    def export(self,default="csv"):
-        result=self.calc_for_all_userdata()
-        with open(self.output_file,'w') as f:
-            writer=csv.writer(f)
-            for i in result:
-                str="{},{:.0f},{:.2f},{:.2f},{:.2f}".format(*i)
-                str_list=str.split(',')
-#                print(str_list)    test 
-                writer.writerow(str_list)
+    
+    
+def export(output_file,q):
+    result=q.get()
+    with open(output_file,'w') as f:
+        writer=csv.writer(f)
+        writer.writerows(result)
             
-              
-        
+            
 if __name__=='__main__':
-
-    args_file_paths=Args()
-    configfile=args_file_paths.get_configfile_path()
-    salary_file=args_file_paths.get_salary_file()
-    output_file=args_file_paths.get_output_file()
-#    print(configfile,' ',salary_file,' ',output_file)    test
-    config=Config(configfile).config
-
-#    print(config)               test
-    userdata=UserData(salary_file).userdata
-#    print(userdata)                 test
-    
-    output=IncomeTaxCalculator(config,userdata,output_file)
-    output.export()
+    a=Args()
+    b=Config(a.c).config 
+    q1 = Queue()
+    p1=UserData(a.d,q1)
+    p1.start()
+    p1.join() 
+    q2=Queue()     
+    p2=IncomeTaxCalculator(b,q1,q2)
+    p2.start()
+    p2.join()
+    p3=Process(target=export,args=(a.o,q2)) 
+    p3.start()    
