@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% macro file_items(filename) %}
+	<div>
+		{% for key,value in filename.items() %}
+			<p>{{key}}:{{value}}</p>
+		{% endfor %}
+	</div>
+{% endmacro %}
+
+{% block content %}
+	{{file_items(filename)}}
+{% endblock %}
