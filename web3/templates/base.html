@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<<html>
+<head>
+	<title></title>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="static/sytle.css">
+</head>
+<body>
+	<div>
+		{% block header %}
+			<nav>navbar</nav>
+		{% endblock %}
+	</div>
+	<div>
+		{% block content %}{% endblock %}
+	</div>
+	<div id="footer">
+		{% block footer %}
+			&copy;Copyright 2017 by <a href="http://www.shiyanlou.com/">shiyanlou</a>
+		{% endblock %}
+	</div>
+</body>
+</html>

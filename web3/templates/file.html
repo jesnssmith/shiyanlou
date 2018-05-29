@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% macro file_items(file) %}
+	<div>
+		<h2>
+			title:{{file.title}}
+		</h2>
+		<p>created time:{{file.created_time}}</p>
+		<p>cotegory:{{file.category}}</p>
+		<p>{{file.content}}</p>
+	</div>
+{% endmacro %}
+
+{% block content %}
+	{{file_items(file)}}
+{% endblock %}
