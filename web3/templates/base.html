@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<<html>
+<html>
 <head>
 	<title></title>
 	<meta charset="utf-8">
-	<link rel="stylesheet" type="text/css" href="static/sytle.css">
+	<link rel="stylesheet" type="text/css" href="{{ url_for( 'static', filename="bootstrap-3.3.7-dist/css/bootstrap.min.css") }}}">
 </head>
 <body>
 	<div>
@@ -19,5 +19,8 @@
 			&copy;Copyright 2017 by <a href="http://www.shiyanlou.com/">shiyanlou</a>
 		{% endblock %}
 	</div>
+
+	<script src="{{ url_for( 'static', filename="jquery-3.3.1.min.js") }}"></script>
+	<script src="{{ url_for('static', filename="bootstrap-3.3.7-dist/js/bootstrap.min.js") }}"></script>
 </body>
 </html>
