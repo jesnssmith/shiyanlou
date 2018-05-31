@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+{% for file in files %}
+<h3><a href={{url_for('file',file_id=file.id)}}>{{file.title}}</a></h3>
+<p>{% for tag in file.tags %}
+	<span class="label label-info">{{ tag }}</span>
+	{% endfor %}
+</p>
+{% endfor %}
+{% endblock %}
