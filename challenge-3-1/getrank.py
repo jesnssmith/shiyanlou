@@ -1,18 +1,14 @@
-
-# -*- coding: utf-8 -*-
-
 import sys
 from pymongo import MongoClient
-
 
 def get_rank(user_id):
     client = MongoClient()
     db = client.shiyanlou
     contests = db.contests
 
-    user_data = {}
-    user=[]
-    user_ids=set()
+    user_data = {} #dict with shape{'user_id':{'score':, 'submit_time':}}
+    user=[]        # list with shape [(user_id, score, submit_time)]
+    user_ids=set() #contain all user_id
     for contest in contests.find():
         user_ids.add(contest.get('user_id'))
         if user_data.get(contest.get('user_id')):
@@ -23,8 +19,9 @@ def get_rank(user_id):
 
     for i,j in user_data.items():
         user.append((i,j['score'],j['submit_time']))
-    sort_user = sorted(user,key=lambda x:(-x[1] ,[2]))
+    sort_user = sorted(user,key=lambda x:(-x[1] ,x[2]))  # sorted user
 
+    # use index of sort_user to get rank
     for i,j in enumerate(sort_user):
         user_data[j[0]]['rank'] = i + 1
 
