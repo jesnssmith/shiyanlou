@@ -10,7 +10,9 @@ import json
 
 class FlaskDocPipeline(object):
     def process_item(self, item, spider):
-
+        item['text'] = re.sub('\s+', ' ', item['text'])
+        data = json.dumps(dict(item))
+        self.redis.lpush('flask_doc:items', data)
         return item
 
     def open_spider(self, spider):
